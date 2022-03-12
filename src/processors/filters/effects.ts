@@ -1,0 +1,9 @@
+export const blur = (percentage: number) => `blur(${percentage}px)`;
+export const brightness = (percentage: number) => `brightness(${percentage})`;
+export const contrast = (percentage: number) => `contrast(${percentage}%)`;
+export const grayscale = (percentage: number) => `grayscale(${percentage}%)`;
+export const hue_rotate = (degrees: number) => `hue-rotate(${degrees}deg)`;
+export const invert = (percentage: number) => `invert(${percentage}%)`;
+export const opacity = (percentage: number) => `opacity(${percentage}%)`;
+export const saturate = (percentage: number) => `saturate(${percentage}%)`;
+export const sepia = (percentage: number) => `sepia(${percentage}%)`;
