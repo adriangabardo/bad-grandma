@@ -38,13 +38,7 @@ export const tile = (ctx: CanvasRenderingContext2D, img: Image) => {
         ctx.shadowColor = "black";
         ctx.shadowBlur = 10;
 
-        const randomiser = (): boolean => {
-          const randomDigit = getRandom(0, 1000);
-
-          console.log("random digit", randomDigit, randomDigit % 7);
-
-          return randomDigit % 7 === 0;
-        };
+        const randomiser = (): boolean => getRandom(0, 1000) % 7 === 0;
 
         if (h > leftSlices && h < rightSlices && randomiser()) {
           ctx.drawImage(img, xAxis, yAxis, hWidth, yHeight, xAxis, yAxis, hWidth, yHeight);
