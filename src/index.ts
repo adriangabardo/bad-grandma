@@ -1,31 +1,46 @@
-import { createCanvas, loadImage } from "canvas";
+import { randomizer } from "./handlers/randomizer";
+import { tame } from "./handlers/tame";
 import fs from "fs";
-import { drawImage } from "./processors/drawImage";
-import { glitch } from "./processors/glitch";
-import { gradient } from "./processors/gradient";
-import { tile } from "./processors/tile";
-import { sizeFromImage } from "./util/sizeFrom";
+
+const RANDOMIZATIONS = 6; // Amount of batches of randomizations that we want.
+const BATCH_FOLDER = "output/batch"; // Output folder
+const SRC_FOLDER = "batch"; // Folder from which to grab src images
+
+// Pack names for each randomization
+const call_signs = ["Rudimentar", "Bombay", "Sapphire", "BoomBox", "Lua", "Kajkow"];
+
+const process_batch = (file: string) => {
+  const src = [SRC_FOLDER, file].join("/");
+
+  const promises = [];
+
+  // Creates either a randomiser() or a tame() processed image
+  for (let i = 0; i < RANDOMIZATIONS; i++) {
+    const fn = i % 2 === 0 ? randomizer : tame;
+    const output = () => `${BATCH_FOLDER}/${call_signs[i]}/${file}_${fn.name}.jpeg`;
+    promises.push(fn(src, output()));
+  }
+
+  // Returns the promises that will be all settled.
+  return promises;
+};
 
 (async () => {
-  // Load up the image
-  const image = await loadImage("assets/imgs/cyberp.jpg");
+  // Goes through a directory and grabs the names of all files in it
+  const files: string[] = await new Promise((resolve, reject) =>
+    fs.readdir(SRC_FOLDER, (err, files) => {
+      if (err) reject(err);
+      resolve(files);
+    })
+  );
 
-  // Extract size from image
-  const size = sizeFromImage(image);
+  // Create iterations of folders in batch folder
+  for (let i = 0; i < RANDOMIZATIONS; i++) {
+    await fs.promises.mkdir(`${BATCH_FOLDER}/${call_signs[i]}`, { recursive: true });
+  }
 
-  // Create canvas and context
-  const canvas = createCanvas(size[0], size[1]);
-  const ctx = canvas.getContext("2d");
+  // Settles all promises from process_batch
+  await Promise.allSettled(files.flatMap(process_batch));
 
-  // Add any processing to image
-  drawImage(ctx, image); // Draw normal image behind, so it fills the voids
-  glitch(ctx, image); // Draw glitched image on top
-  gradient(ctx, size); // Add gradient
-  tile(ctx, image);
-
-  // Save to file
-  const out = fs.createWriteStream("output/imgs/test.jpeg");
-  const stream = canvas.createJPEGStream();
-  stream.pipe(out);
-  out.on("finish", () => console.log("The JPEG file was created."));
+  console.log("chill bro...");
 })();
