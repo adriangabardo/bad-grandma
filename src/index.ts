@@ -1,46 +1,39 @@
+import { Image, loadImage } from "canvas";
+import fs, { promises } from "fs";
+import { join } from "path";
 import { randomizer } from "./handlers/randomizer";
-import { tame } from "./handlers/tame";
-import fs from "fs";
 
-const RANDOMIZATIONS = 6; // Amount of batches of randomizations that we want.
-const BATCH_FOLDER = "output/batch"; // Output folder
-const SRC_FOLDER = "batch"; // Folder from which to grab src images
+const BATCH_FOLDER = join("./", "output", "batch"); // Output folder
+const SRC_FOLDER = join("./", "batch"); // Folder from which to grab src images
 
-// Pack names for each randomization
-const call_signs = ["Rudimentar", "Bombay", "Sapphire", "BoomBox", "Lua", "Kajkow"];
-
-const process_batch = (file: string) => {
-  const src = [SRC_FOLDER, file].join("/");
-
-  const promises = [];
-
-  // Creates either a randomiser() or a tame() processed image
-  for (let i = 0; i < RANDOMIZATIONS; i++) {
-    const fn = i % 2 === 0 ? randomizer : tame;
-    const output = () => `${BATCH_FOLDER}/${call_signs[i]}/${file}_${fn.name}.jpeg`;
-    promises.push(fn(src, output()));
-  }
-
-  // Returns the promises that will be all settled.
-  return promises;
-};
+// Unique name for each batch run
+const call_signs = ["Rudimentar", "Sapphire"];
 
 (async () => {
   // Goes through a directory and grabs the names of all files in it
-  const files: string[] = await new Promise((resolve, reject) =>
-    fs.readdir(SRC_FOLDER, (err, files) => {
-      if (err) reject(err);
-      resolve(files);
-    })
+  const files: string[] = await promises.readdir(SRC_FOLDER);
+
+  // An array of arrays, each item being an Image and a string with the filename
+  const inputs: [Image, string][] = await Promise.all(
+    files.map(async (file) => [await loadImage(join(SRC_FOLDER, file)), file])
   );
 
-  // Create iterations of folders in batch folder
-  for (let i = 0; i < RANDOMIZATIONS; i++) {
-    await fs.promises.mkdir(`${BATCH_FOLDER}/${call_signs[i]}`, { recursive: true });
+  // Create batch folder if it doesn't exist
+  if (!fs.existsSync(BATCH_FOLDER)) {
+    await promises.mkdir(BATCH_FOLDER, { recursive: true });
   }
 
-  // Settles all promises from process_batch
-  await Promise.allSettled(files.flatMap(process_batch));
+  // Blends in Image and call_sign and returns a randomizer() promises to the expected output
+  const random_image = (call_sign: string) => (input: [Image, string]) => {
+    const output = join(BATCH_FOLDER, `${input[1]}_${call_sign}.jpg`);
+    return randomizer(input[0], output);
+  };
 
-  console.log("chill bro...");
+  // Creates the array of promises for processing images
+  const process_images = call_signs.flatMap((call_sign) => inputs.map(random_image(call_sign)));
+
+  // Run all image processing promises in parallel and wait for all to resolve
+  await Promise.allSettled(process_images).then((results) => {
+    results.forEach(console.log);
+  });
 })();
